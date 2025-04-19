@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:math';
+import 'package:geolocator/geolocator.dart';
+
+import '../services/api_service.dart';
 
 class ScanScreen extends StatefulWidget {
   const ScanScreen({Key? key}) : super(key: key);
@@ -20,6 +23,26 @@ class _ScanScreenState extends State<ScanScreen>
     {"id": "user3", "distance": 60},
   ];
 
+Future<Position> _getCurrentLocation() async {
+  bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+  if (!serviceEnabled) {
+    return Future.error('Location services are disabled.');
+  }
+
+  LocationPermission permission = await Geolocator.checkPermission();
+  if (permission == LocationPermission.denied) {
+    permission = await Geolocator.requestPermission();
+    if (permission == LocationPermission.denied) {
+      return Future.error('Location permissions are denied');
+    }
+  }
+
+  return await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high);
+}
+
+
+
   @override
   void initState() {
     super.initState();
@@ -27,6 +50,14 @@ class _ScanScreenState extends State<ScanScreen>
     AnimationController(vsync: this, duration: const Duration(seconds: 3))
       ..repeat();
     _animation = Tween<double>(begin: 0, end: 2 * pi).animate(_controller);
+    _fetchNearbyUsers();
+  }
+
+  Future<void> _fetchNearbyUsers() async {
+    final position = await _getCurrentLocation();
+    final users = await ApiService().scanNearby(position.latitude, position.longitude);
+    print("Nearby Users: $users");
+    // Ab users ko show bhi kara sakte ho list me
   }
 
   @override
